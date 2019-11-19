@@ -1,6 +1,7 @@
 <html>
 
 <head>
+	<meta charset="UTF-8">
 	<title>BrainFuck Text Generator</title>
 	<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet"
 		integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
@@ -293,8 +294,8 @@
 			const elem = document.getElementById(id);
 			elem.select();
 			document.execCommand("copy");
-			document.getElementById(id + "-copy").value = "Copié";
-			setTimeout(() => document.getElementById(id + "-copy").value = "Copier", 3000);
+			document.getElementById(id + "-copy").value = "Copied !";
+			setTimeout(() => document.getElementById(id + "-copy").value = "Copy", 3000);
 		}
 	</script>
 	<div class="container-fluid">
@@ -308,7 +309,7 @@
 				<div class="textarea-wrapper">
 					<div class="textarea-header">
 						<label for="input">Raw Text :</label>
-						<input id="decoded-copy" type="button" value="Copier" onClick="copy('decoded')" />
+						<input id="decoded-copy" type="button" value="Copy" onClick="copy('decoded')" />
 					</div>
 					<textarea id="decoded" type="text"></textarea>
 				</div>
@@ -321,7 +322,7 @@
 				<div class="textarea-wrapper">
 					<div class="textarea-header">
 						<label for="input">BrainFuck code :</label>
-						<input id="encoded-copy" type="button" value="Copier" onClick="copy('encoded')" />
+						<input id="encoded-copy" type="button" value="Copy" onClick="copy('encoded')" />
 					</div>
 					<textarea id="encoded"></textarea>
 				</div>
