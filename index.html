@@ -15,6 +15,8 @@
 			width: 100%;
 			height: 100%;
 			background: #eee;
+			color: #444;
+			border-color: #444;
 		}
 
 		.container-fluid {
@@ -42,7 +44,7 @@
 
 		.title h2 {
 			padding: .5em;
-			background: white;
+			background: #FAFAFA;
 		}
 
 		.textarea-wrapper {
@@ -66,7 +68,6 @@
 
 		.textarea-wrapper .textarea-header > input {
 			margin-left: 5px;
-			padding: 0;
 		}
 
 		.textarea-wrapper textarea {
@@ -75,6 +76,11 @@
 			padding-left: .5em;
 			padding-right: .5em;
 			resize: none;
+			background: #FAFAFA;
+		}
+		
+		.textarea-wrapper textarea:focus {
+			outline: #999 auto 1px;
 		}
 
 		.buttons-wrapper {
@@ -86,14 +92,13 @@
 
 			width: 100%;
 		}
-
-		.buttons-wrapper input {
-			padding: 0;
+		
+		.btn-success {
+			color: #EEE;
 		}
 
 		.buttons-wrapper .stats-time {
 			padding: 0 .5em 0 .5em;
-			font-size: .85em;
 			overflow: hidden;
 			text-overflow: ellipsis;
 			white-space: nowrap;
@@ -107,6 +112,11 @@
 			h2 {
 				font-size: 4rem;
 			}
+			
+			.buttons-wrapper input,
+			.textarea-wrapper .textarea-header > input {
+				font-size: 1.5rem;
+			}
 		}
 
 		@media screen and (orientation: landscape) {
@@ -118,6 +128,7 @@
 			.textarea-wrapper {
 				padding-right: 15px;
 				padding-left: 15px;
+				max-width: 41.666667%;
 			}
 
 			.buttons-wrapper {
@@ -127,7 +138,6 @@
 
 				max-width: 16.666667%;
 				position: relative;
-				width: 100%;
 				padding-right: 15px;
 				padding-left: 15px;
 			}
@@ -150,31 +160,41 @@
 
 <body>
 	<script>
+		const MAX_LENGTH_PROCESS = 15000;
 		function encodeBF() {
 			const inputValue = document.getElementById("decoded").value;
 			if (inputValue.length === 0) {
 				document.getElementById("encodingTime").textContent = "No Input !";
 				return;
+			} else if (inputValue.length > MAX_LENGTH_PROCESS) {
+				document.getElementById("encodingTime").textContent = "Input too large !";
+				return;
 			}
-			document.getElementById("encodingTime").textContent = '';
-			const startTime = (new Date()).getTime();
-			document.getElementById("encoded").value = '';
-			let chars = [];
-			for (let i = 0; i < inputValue.length; i++) {
-				chars.push(inputValue.charCodeAt(i));
-			}
-			let index = 0;
-			let str = "";
-			chars.forEach(c => {
-				while (index !== c) {
-					if (index < c) { str += "+"; index++; }
-					else { str += "-"; index--; }
+			document.getElementById("decoded").disabled = true;
+			document.getElementById("encoded").disabled = true;
+			setTimeout(() => {
+				document.getElementById("encodingTime").textContent = '';
+				const startTime = (new Date()).getTime();
+				document.getElementById("encoded").value = '';
+				let chars = [];
+				for (let i = 0; i < inputValue.length; i++) {
+					chars.push(inputValue.charCodeAt(i));
 				}
-				str += ".";
-			})
-			str = optimiseBF(str);
-			document.getElementById("encoded").value = str;
-			document.getElementById("encodingTime").textContent = ((new Date()).getTime() - startTime) + "ms"
+				let index = 0;
+				let str = "";
+				chars.forEach(c => {
+					while (index !== c) {
+						if (index < c) { str += "+"; index++; }
+						else { str += "-"; index--; }
+					}
+					str += ".";
+				})
+				str = optimiseBF(str);
+				document.getElementById("encoded").value = str;
+				document.getElementById("encodingTime").textContent = ((new Date()).getTime() - startTime) + "ms";
+				document.getElementById("decoded").disabled = false;
+				document.getElementById("encoded").disabled = false;
+			}, 1);
 		}
 
 		function optimiseBF(str) {
@@ -208,23 +228,29 @@
 			if (inputValue.length === 0) {
 				document.getElementById("decodingTime").textContent = "No Input !";
 				return;
-			}
-			document.getElementById("decodingTime").textContent = '';
-			const startTime = (new Date()).getTime();
-			document.getElementById("decoded").value = '';
-
-			let str = "";
-			const chars = inputValue.split('');
-
-			const res = decodeLoop(inputValue, [0], 0, true);
-			if (res.error) {
-				document.getElementById("decoded").value = "";
-				document.getElementById("decodingTime").textContent = "Error !";
+			} else if (inputValue.length > MAX_LENGTH_PROCESS*20) {
+				document.getElementById("decodingTime").textContent = "Input too large !";
 				return;
 			}
+			document.getElementById("decoded").disabled = true;
+			document.getElementById("encoded").disabled = true;
+			setTimeout(() => {
+				document.getElementById("decodingTime").textContent = '';
+				const startTime = (new Date()).getTime();
+				document.getElementById("decoded").value = '';
 
-			document.getElementById("decoded").value = res.str;
-			document.getElementById("decodingTime").textContent = ((new Date()).getTime() - startTime) + "ms"
+				const res = decodeLoop(inputValue, [0], 0, true);
+				if (res.error) {
+					document.getElementById("decoded").value = "";
+					document.getElementById("decodingTime").textContent = "Error !";
+					return;
+				}
+
+				document.getElementById("decoded").value = res.str;
+				document.getElementById("decodingTime").textContent = ((new Date()).getTime() - startTime) + "ms";
+				document.getElementById("decoded").disabled = false;
+				document.getElementById("encoded").disabled = false;
+			}, 1);
 		}
 
 		function decodeLoop(str, tab, cursor, init = false) {
@@ -292,10 +318,11 @@
 		
 		function copy(id) {
 			const elem = document.getElementById(id);
+			if(elem.value.length === 0){ return; }
 			elem.select();
 			document.execCommand("copy");
 			document.getElementById(id + "-copy").value = "Copied !";
-			setTimeout(() => document.getElementById(id + "-copy").value = "Copy", 3000);
+			setTimeout(() => document.getElementById(id + "-copy").value = "Copy", 5000);
 		}
 	</script>
 	<div class="container-fluid">
@@ -309,20 +336,20 @@
 				<div class="textarea-wrapper">
 					<div class="textarea-header">
 						<label for="input">Raw Text :</label>
-						<input id="decoded-copy" type="button" value="Copy" onClick="copy('decoded')" />
+						<input id="decoded-copy" type="button" value="Copy" onClick="copy('decoded')" class="btn btn-info" />
 					</div>
 					<textarea id="decoded" type="text"></textarea>
 				</div>
 				<div class="buttons-wrapper">
-					<input type="button" value="Encode" onClick="encodeBF()" class="col-3" />
-					<div id="encodingTime" class="stats-time col-3"></div>
-					<input type="button" value="Decode" onClick="decodeBF()" class="col-3" />
-					<div id="decodingTime" class="stats-time col-3"></div>
+					<input type="button" value="Encode" onClick="encodeBF()" class="col-3 btn btn-success" />
+					<small id="encodingTime" class="stats-time col-3"></small>
+					<input type="button" value="Decode" onClick="decodeBF()" class="col-3 btn btn-warning" />
+					<small id="decodingTime" class="stats-time col-3"></small>
 				</div>
 				<div class="textarea-wrapper">
 					<div class="textarea-header">
 						<label for="input">BrainFuck code :</label>
-						<input id="encoded-copy" type="button" value="Copy" onClick="copy('encoded')" />
+						<input id="encoded-copy" type="button" value="Copy" onClick="copy('encoded')" class="btn btn-info" />
 					</div>
 					<textarea id="encoded"></textarea>
 				</div>
