@@ -188,12 +188,12 @@
 			update: (percent) => {
 				progress.elem.style.width = percent+"%";
 			},
-			end: () => {
+			end: (callback) => {
 				progress.elem.style.width = "100%";
 				progress.processing = false;
 				setTimeout(() => {
 					if(!progress.processing){
-						progress.elem.style.transition = "opacity 1s";
+						progress.elem.style.transition = "opacity 2s";
 						progress.elem.style.opacity = "0";
 						setTimeout(() => {
 							if(!progress.processing){
@@ -204,6 +204,7 @@
 						}, 2000);
 					}
 				}, 3000);
+				setTimeout(callback, 5000);
 			}
 		}
 		
@@ -214,6 +215,8 @@
 				// INIT
 				document.getElementById("decoded").disabled = true;
 				document.getElementById("encoded").disabled = true;
+				document.getElementById("decodeInput").disabled = true;
+				document.getElementById("encodeInput").disabled = true;
 				const inputValue = document.getElementById("decoded").value;
 				if (inputValue.length === 0) {
 					return reject("No Input !");
@@ -280,7 +283,10 @@
 			}).finally(() => {
 				document.getElementById("decoded").disabled = false;
 				document.getElementById("encoded").disabled = false;
-				progress.end();
+				progress.end(() => {
+					document.getElementById("decodeInput").disabled = false;
+					document.getElementById("encodeInput").disabled = false;
+				});
 			});
 		}
 
@@ -292,6 +298,8 @@
 				// INIT
 				document.getElementById("decoded").disabled = true;
 				document.getElementById("encoded").disabled = true;
+				document.getElementById("decodeInput").disabled = true;
+				document.getElementById("encodeInput").disabled = true;
 				const inputValue = document.getElementById("encoded").value.replace('\r', '').replace('\n', '');
 				if (inputValue.length === 0) {
 					return reject("No Input !");
@@ -384,7 +392,10 @@
 			}).finally(() => {
 				document.getElementById("decoded").disabled = false;
 				document.getElementById("encoded").disabled = false;
-				progress.end()
+				progress.end(() => {
+					document.getElementById("decodeInput").disabled = false;
+					document.getElementById("encodeInput").disabled = false;
+				})
 			});
 		}
 		
@@ -414,9 +425,9 @@
 					<textarea id="decoded" type="text"></textarea>
 				</div>
 				<div class="buttons-wrapper">
-					<input type="button" value="Encode" onClick="encodeBF()" class="col-3 btn btn-success" />
+					<input type="button" value="Encode" onClick="encodeBF()" class="col-3 btn btn-success" id="encodeInput" />
 					<small id="encodingTime" class="stats-time col-3"></small>
-					<input type="button" value="Decode" onClick="decodeBF()" class="col-3 btn btn-warning" />
+					<input type="button" value="Decode" onClick="decodeBF()" class="col-3 btn btn-warning" id="decodeInput" />
 					<small id="decodingTime" class="stats-time col-3"></small>
 				</div>
 				<div class="textarea-wrapper">
