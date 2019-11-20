@@ -104,6 +104,16 @@
 			white-space: nowrap;
 		}
 
+		.progress-bar {
+			position: absolute;
+			top: 0;
+			left: 0;
+			height: 3px;
+			background: red;
+			width: 0%;
+			opacity: 1;
+		}
+
 		@media screen and (orientation: portrait) {
 			body {
 				font-size: 2rem;
@@ -161,25 +171,66 @@
 <body>
 	<script>
 		const MAX_LENGTH_PROCESS = 15000;
-		function encodeBF() {
-			const inputValue = document.getElementById("decoded").value;
-			if (inputValue.length === 0) {
-				document.getElementById("encodingTime").textContent = "No Input !";
-				return;
-			} else if (inputValue.length > MAX_LENGTH_PROCESS) {
-				document.getElementById("encodingTime").textContent = "Input too large !";
-				return;
-			}
-			document.getElementById("decoded").disabled = true;
-			document.getElementById("encoded").disabled = true;
-			setTimeout(() => {
-				document.getElementById("encodingTime").textContent = '';
-				const startTime = (new Date()).getTime();
-				document.getElementById("encoded").value = '';
-				let chars = [];
-				for (let i = 0; i < inputValue.length; i++) {
-					chars.push(inputValue.charCodeAt(i));
+
+		const progress = {
+			processing: false,
+			elem: null,
+			init: () => {
+				progress.processing = true;
+				if(progress.elem === null){
+					progress.elem = document.getElementById("progress-bar");
 				}
+				progress.elem.style.transition = "none";
+				progress.elem.style.width = "0%";
+				progress.elem.style.opacity = "1";
+				progress.elem.style.transition = "width .5s";
+			},
+			update: (percent) => {
+				progress.elem.style.width = percent+"%";
+			},
+			end: () => {
+				progress.elem.style.width = "100%";
+				progress.processing = false;
+				setTimeout(() => {
+					if(!progress.processing){
+						progress.elem.style.transition = "opacity 1s";
+						progress.elem.style.opacity = "0";
+						setTimeout(() => {
+							if(!progress.processing){
+								progress.elem.style.transition = "none";
+								progress.elem.style.width = "0%";
+								progress.elem.style.opacity = "1";
+							}
+						}, 2000);
+					}
+				}, 3000);
+			}
+		}
+		
+		function encodeBF() {
+			const startTime = (new Date()).getTime();
+			progress.init();
+			new Promise((resolve, reject) => {
+				// INIT
+				document.getElementById("decoded").disabled = true;
+				document.getElementById("encoded").disabled = true;
+				const inputValue = document.getElementById("decoded").value;
+				if (inputValue.length === 0) {
+					return reject("No Input !");
+				} else if (inputValue.length > MAX_LENGTH_PROCESS) {
+					return reject("Input too large !");
+				}
+				document.getElementById("encodingTime").textContent = '';
+				document.getElementById("encoded").value = '';
+				progress.update(25);
+				setTimeout(() => resolve(inputValue), 10);
+			}).then((data) => {
+				// CONVERSION
+				let chars = [];
+				for (let i = 0; i < data.length; i++) {
+					chars.push(data.charCodeAt(i));
+				}
+				progress.update(37.5);
 				let index = 0;
 				let str = "";
 				chars.forEach(c => {
@@ -189,131 +240,152 @@
 					}
 					str += ".";
 				})
-				str = optimiseBF(str);
-				document.getElementById("encoded").value = str;
+				progress.update(50);
+				return str;
+			}).then((data) => {
+				// OPTIMIZATION
+				let optStr = "";
+				for (let i = 0; i < data.length; i++) {
+					const c = data.charAt(i);
+					if (c == "-" || c == "+") {
+						let count = 1;
+						while (data.charAt(i + 1) == c) {
+							count++;
+							i++;
+						}
+						const divA = parseInt(Math.sqrt(count));
+						if (divA > 1) {
+							const divB = count / divA;
+							const left = count % divA;
+							const multStr = ">" + "+".repeat(divA) + "[-<" + c.repeat(divB) + ">]<" + c.repeat(left);
+							optStr += multStr;
+						} else {
+							optStr += c.repeat(count);
+						}
+					} else {
+						optStr += c;
+					}
+				}
+				progress.update(75);
+				return optStr;
+			}).then((data) => {
+				// FINALIZE
+				document.getElementById("encoded").value = data;
 				document.getElementById("encodingTime").textContent = ((new Date()).getTime() - startTime) + "ms";
+				progress.update(100);
+				return;
+			}).catch((err) => {
+				console.error(err)
+				document.getElementById("encodingTime").textContent = err;
+			}).finally(() => {
 				document.getElementById("decoded").disabled = false;
 				document.getElementById("encoded").disabled = false;
-			}, 1);
-		}
-
-		function optimiseBF(str) {
-			let optStr = "";
-			for (let i = 0; i < str.length; i++) {
-				const c = str.charAt(i);
-				if (c == "-" || c == "+") {
-					let count = 1;
-					while (str.charAt(i + 1) == c) {
-						count++;
-						i++;
-					}
-					const divA = parseInt(Math.sqrt(count));
-					if (divA > 1) {
-						const divB = count / divA;
-						const left = count % divA;
-						const multStr = ">" + "+".repeat(divA) + "[-<" + c.repeat(divB) + ">]<" + c.repeat(left);
-						optStr += multStr;
-					} else {
-						optStr += c.repeat(count);
-					}
-				} else {
-					optStr += c;
-				}
-			}
-			return optStr;
+				progress.end();
+			});
 		}
 
 		function decodeBF() {
-			const inputValue = document.getElementById("encoded").value.replace('\r', '').replace('\n', '');
-			if (inputValue.length === 0) {
-				document.getElementById("decodingTime").textContent = "No Input !";
-				return;
-			} else if (inputValue.length > MAX_LENGTH_PROCESS*20) {
-				document.getElementById("decodingTime").textContent = "Input too large !";
-				return;
-			}
-			document.getElementById("decoded").disabled = true;
-			document.getElementById("encoded").disabled = true;
-			setTimeout(() => {
-				document.getElementById("decodingTime").textContent = '';
-				const startTime = (new Date()).getTime();
-				document.getElementById("decoded").value = '';
-
-				const res = decodeLoop(inputValue, [0], 0, true);
-				if (res.error) {
-					document.getElementById("decoded").value = "";
-					document.getElementById("decodingTime").textContent = "Error !";
-					return;
+			const startTime = (new Date()).getTime();
+			const progressElem = document.getElementById("progress-bar");
+			progress.init()
+			new Promise((resolve, reject) => {
+				// INIT
+				document.getElementById("decoded").disabled = true;
+				document.getElementById("encoded").disabled = true;
+				const inputValue = document.getElementById("encoded").value.replace('\r', '').replace('\n', '');
+				if (inputValue.length === 0) {
+					return reject("No Input !");
+				} else if (inputValue.length > MAX_LENGTH_PROCESS*20) {
+					return reject("Input too large !");
 				}
-
-				document.getElementById("decoded").value = res.str;
+				document.getElementById("decodingTime").textContent = '';
+				document.getElementById("decoded").value = '';
+				setTimeout(() => resolve(inputValue), 10);
+			}).then((data) => {
+				// DECODE
+				function decodeLoop(str, tab, cursor, init = false) {
+					let resStr = "";
+					const chars = str.split('');
+					for (let i = 0; i < chars.length; i++) {
+						const c = chars[i];
+						switch (c) {
+							case '+':
+								tab[cursor]++;
+								break;
+							case '-':
+								if (tab[cursor] === 0) {
+									return { error: true };
+								}
+								tab[cursor]--;
+								break;
+							case '>':
+								cursor++;
+								if (!tab[cursor]) {
+									tab[cursor] = 0;
+								}
+								break;
+							case '<':
+								if (cursor === 0) {
+									return { error: true };
+								}
+								cursor--;
+								break;
+							case '.':
+								resStr += String.fromCharCode(tab[cursor]);
+								break;
+							case '[':
+								let loopStr = "";
+								i++;
+								while (chars[i] !== ']') {
+									if (i === chars.length) {
+										return { error: true };
+									}
+									loopStr += chars[i]
+									i++;
+								}
+								const res = decodeLoop(loopStr, tab, cursor);
+								if (res.error) {
+									return { error: true };
+								}
+								resStr += res.str;
+								tab = res.tab;
+								break;
+							default:
+								break;
+						}
+						if(init){
+							progress.update(i / chars.length * 100);
+						}
+					}
+					let suffix = "";
+					if (!init && tab[cursor] > 0) {
+						const childRes = decodeLoop(str, tab, cursor);
+						if (childRes.error) {
+							return { error: true };
+						}
+						suffix += childRes.str;
+						tab = childRes.tab;
+					}
+					return { tab, str: resStr + suffix };
+				}
+				const res = decodeLoop(data, [0], 0, true);
+				if (res.error) {
+					throw "Error !";
+				}
+				progress.update(100)
+				return res
+			}).then((data) => {
+				// FINALIZE
+				document.getElementById("decoded").value = data.str;
 				document.getElementById("decodingTime").textContent = ((new Date()).getTime() - startTime) + "ms";
+			}).catch((err) => {
+				console.error(err)
+				document.getElementById("decodingTime").textContent = err;
+			}).finally(() => {
 				document.getElementById("decoded").disabled = false;
 				document.getElementById("encoded").disabled = false;
-			}, 1);
-		}
-
-		function decodeLoop(str, tab, cursor, init = false) {
-			let resStr = "";
-			const chars = str.split('');
-			for (let i = 0; i < chars.length; i++) {
-				const c = chars[i];
-				switch (c) {
-					case '+':
-						tab[cursor]++;
-						break;
-					case '-':
-						if (tab[cursor] === 0) {
-							return { error: true };
-						}
-						tab[cursor]--;
-						break;
-					case '>':
-						cursor++;
-						if (!tab[cursor]) {
-							tab[cursor] = 0;
-						}
-						break;
-					case '<':
-						if (cursor === 0) {
-							return { error: true };
-						}
-						cursor--;
-						break;
-					case '.':
-						resStr += String.fromCharCode(tab[cursor]);
-						break;
-					case '[':
-						let loopStr = "";
-						i++;
-						while (chars[i] !== ']') {
-							if (i === chars.length) {
-								return { error: true };
-							}
-							loopStr += chars[i]
-							i++;
-						}
-						const res = decodeLoop(loopStr, tab, cursor);
-						if (res.error) {
-							return { error: true };
-						}
-						resStr += res.str;
-						tab = res.tab;
-						break;
-					default:
-						break;
-				}
-			}
-			let suffix = "";
-			if (!init && tab[cursor] > 0) {
-				const childRes = decodeLoop(str, tab, cursor);
-				if (childRes.error) {
-					return { error: true };
-				}
-				suffix += childRes.str;
-				tab = childRes.tab;
-			}
-			return { tab, str: resStr + suffix };
+				progress.end()
+			});
 		}
 		
 		function copy(id) {
@@ -326,6 +398,7 @@
 		}
 	</script>
 	<div class="container-fluid">
+		<div class="progress-bar" id="progress-bar"></div>
 		<div class="row">
 			<div class="col-12 title">
 				<h2>BrainFuck Generator</h2>
